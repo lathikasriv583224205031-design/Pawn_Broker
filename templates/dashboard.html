@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dashboard</title>
+<style>
+body {font-family: Arial; background:#eef2f7;}
+h2 {color:#333;}
+
+.nav {
+    background:#2c3e50;
+    padding:15px;
+    color:white;
+}
+.nav a {
+    color:white;
+    margin:10px;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+.card {
+    background:white;
+    padding:15px;
+    margin:15px 0;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+table {
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+}
+th {
+    background:#3498db;
+    color:white;
+    padding:10px;
+}
+td {
+    padding:10px;
+    text-align:center;
+}
+tr:nth-child(even) {background:#f2f2f2;}
+
+.btn {
+    padding:5px 10px;
+    border:none;
+    border-radius:5px;
+    text-decoration:none;
+}
+.edit {background:orange; color:white;}
+.delete {background:red; color:white;}
+.sms {background:#3498db; color:white;}
+.export {background:#27ae60; color:white; font-weight:bold;}
+
+@media print {
+    .nav, form, .action-col, .btn {
+        display: none !important;
+    }
+    .card {
+        box-shadow: none;
+        margin: 0;
+        padding: 5px;
+    }
+    body { background: white; }
+    h3 { font-size: 14pt; }
+    table { font-size: 10pt; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="nav">
+    Pawn Broker System
+    <a href="/add">➕ Add Customer / வாடிக்கையாளரைச் சேர்</a>
+    
+    <form method="GET" action="/mass_warn" style="display:inline-block; margin-left:10px;">
+        <select name="lang" style="padding: 5px; border-radius: 3px; border:none;">
+            <option value="en">English</option>
+            <option value="ta">Tamil</option>
+        </select>
+        <button type="submit" class="btn sms" title="Send SMS to all Active customers">📢 Mass SMS / அனைவருக்கும் எஸ்.எம்.எஸ்</button>
+    </form>
+
+    <a href="javascript:window.print()" class="btn export" style="margin-left:10px;">📄 Export PDF / பி.டி.எஃப்</a>
+    <a href="/logout">Logout / வெளியேறு</a>
+</div>
+
+<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+    <form method="POST" action="/search" style="display:inline-block;">
+        <input type="text" name="search" placeholder="Search customer / வாடிக்கையாளரைத் தேடு">
+        <button class="btn edit">Search / தேடு</button>
+    </form>
+
+    <form method="GET" action="/dashboard" style="display:inline-block;">
+        <input type="month" name="month_filter" value="{{ month_filter or '' }}">
+        <button class="btn edit">Filter by Month / மாதத்தின்படி வடிகட்டு</button>
+        <a href="/dashboard" class="btn delete" style="padding: 6px 12px;">Clear / அழி</a>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Month-wise Summary / மாதாந்திர சுருக்கம்</h3>
+    <table>
+        <tr>
+            <th>Month / மாதம்</th>
+            <th>Total Loans / கடன்கள்</th>
+            <th>Returns / திரும்பப் பெற்றவை</th>
+            <th>Total Gold (g) / தங்கம் (கி)</th>
+            <th>Total Amount / தொகை</th>
+            <th>Expected Interest / வட்டி</th>
+        </tr>
+        {% for row in month_summary %}
+        <tr>
+            <td><strong>{{ row[0] }}</strong></td>
+            <td>{{ row[1] }}</td>
+            <td style="color:red;font-weight:bold;">{{ row[5] }}</td>
+            <td>{{ row[2] }}</td>
+            <td style="color:blue;font-weight:bold;">{{ row[3] }}</td>
+            <td style="color:green;font-weight:bold;">{{ row[4] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<div class="card" style="text-align:center;">
+    <h3>Monthly Chart / மாதாந்திர வரைபடம்</h3>
+    <img src="{{ url_for('static', filename='chart.png') }}" width="100%" style="max-width: 600px;">
+</div>
+
+<div class="card">
+<table>
+<tr>
+<th>ID / எண்</th>
+<th>Name / பெயர்</th>
+<th>Phone / தொலைபேசி</th>
+<th>Item / பொருள்</th>
+<th>Gold(g) / தங்கம்</th>
+<th>Amount / தொகை</th>
+<th>Interest / வட்டி</th>
+<th>Extra Amt / கூடுதல்</th>
+<th>Total / மொத்தம்</th>
+<th>Due Date / கெடு தேதி</th>
+<th>Status / நிலை</th>
+<th class="action-col">SMS</th>
+<th class="action-col">PDF</th>
+<th class="action-col">Edit / திருத்து</th>
+<th class="action-col">Delete / நீக்கு</th>
+</tr>
+
+{% for row in data %}
+<tr>
+<td>{{row[0]}}</td>
+<td>{{row[1]}}</td>
+<td>{{row[12]}}</td>
+<td>{{row[2]}}</td>
+<td>{{row[9]}}</td>
+<td>{{row[3]}}</td>
+<td style="color:green;font-weight:bold;">{{row[6]}}</td>
+<td>{{row[11]}}</td>
+<td>{{row[7]}}</td>
+<td>{{row[8]}}</td>
+<td>
+    {% if row[10] == 'Returned' %}
+    <span style="color:red;font-weight:bold;">{{row[10]}}</span>
+    {% else %}
+    <span style="color:green;font-weight:bold;">{{row[10]}}</span>
+    {% endif %}
+</td>
+<td class="action-col">
+{% if row[12] %}
+<form method="GET" action="/send_sms/{{row[0]}}" style="display:flex; gap:5px; justify-content:center; margin:0;">
+    <select name="lang" style="padding:2px; border:1px solid #ccc; border-radius:3px;">
+        <option value="en">EN</option>
+        <option value="ta">TA</option>
+    </select>
+    <button type="submit" class="btn sms" title="Send SMS" style="padding: 2px 5px; cursor:pointer;">💬 Send</button>
+</form>
+{% endif %}
+</td>
+<td class="action-col">
+<a href="/customer_pdf/{{row[0]}}" class="btn export" title="Download PDF Receipt">PDF</a>
+</td>
+<td class="action-col">
+<a href="/edit/{{row[0]}}" class="btn edit">Edit</a>
+</td>
+<td class="action-col">
+<a href="/delete/{{row[0]}}" class="btn delete">Del</a>
+</td>
+</tr>
+{% endfor %}
+
+</table>
+</div>
+
+</body>
+</html>

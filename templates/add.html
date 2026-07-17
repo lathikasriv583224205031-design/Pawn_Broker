@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Add Customer</title>
+<style>
+body {background:#f0f4f8;font-family:Arial;}
+
+.form-box {
+    width:350px;
+    margin:auto;
+    margin-top:80px;
+    background:white;
+    padding:25px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+input {
+    width:100%;
+    padding:8px;
+    margin:8px 0;
+}
+
+button {
+    width:100%;
+    padding:10px;
+    background:#27ae60;
+    color:white;
+    border:none;
+    border-radius:5px;
+}
+
+h2 {text-align:center;}
+</style>
+</head>
+
+<body>
+
+<div class="form-box">
+<h2>Add Customer / வாடிக்கையாளரைச் சேர்</h2>
+
+<form method="POST">
+<input name="name" placeholder="Customer Name / வாடிக்கையாளர் பெயர்" required>
+<input name="phone" placeholder="Phone Number / தொலைபேசி எண்">
+<input name="address" placeholder="Address / முகவரி">
+<input name="item" placeholder="Item / பொருள்">
+<input name="gold" placeholder="Gold Weight (g) / தங்கத்தின் எடை (கி)">
+<input name="amount" placeholder="Amount / தொகை" id="amount" oninput="calc()" required>
+<input name="rate" placeholder="Interest % / வட்டி கற்பனை %" id="rate" oninput="calc()" required>
+<input name="months" placeholder="Months / மாதங்கள்" id="months" oninput="calc()" required>
+<input name="manual_extra" placeholder="Extra Amount / கூடுதல் தொகை" id="manual_extra" value="0" oninput="calc()">
+<input name="interest_amount" placeholder="Interest Amount / வட்டி தொகை" id="interest_amount">
+<input name="total_amount" placeholder="Total Amount / மொத்த தொகை" id="total_amount">
+<label style="font-size:0.9em;color:#666;">Due Date (Leave blank to auto-calculate) / கெடு தேதி (தானாக கணக்கிட காலியாக விடவும்)</label>
+<input type="date" name="due_date" id="due_date">
+<select name="status" style="width:100%; padding:8px; margin:8px 0; border: 1px solid #ccc; border-radius: 4px;">
+    <option value="Active">Active / செயலில்</option>
+    <option value="Returned">Returned / திரும்பப்பட்டது</option>
+</select>
+
+<button>Add Loan / கடனைச் சேர்</button>
+</form>
+</div>
+
+<script>
+function calc() {
+    let amt = parseFloat(document.getElementById('amount').value) || 0;
+    let rt = parseFloat(document.getElementById('rate').value) || 0;
+    let mo = parseFloat(document.getElementById('months').value) || 0;
+    let extra = parseFloat(document.getElementById('manual_extra').value) || 0;
+    
+    let interest = (amt * rt * mo) / 100;
+    let total = amt + interest + extra;
+    
+    if (amt > 0 && rt > 0 && mo > 0) {
+        document.getElementById('interest_amount').value = interest.toFixed(2);
+        document.getElementById('total_amount').value = total.toFixed(2);
+    }
+}
+</script>
+
+</body>
+</html>

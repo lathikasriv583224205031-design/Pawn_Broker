@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Add Customer</title>
+<style>
+body {background:#f0f4f8;font-family:Arial;}
+
+.form-box {
+    width:350px;
+    margin:auto;
+    margin-top:80px;
+    background:white;
+    padding:25px;
+    border-radius:10px;
+    box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+input {
+    width:100%;
+    padding:8px;
+    margin:8px 0;
+}
+
+button {
+    width:100%;
+    padding:10px;
+    background:#27ae60;
+    color:white;
+    border:none;
+    border-radius:5px;
+}
+
+h2 {text-align:center;}
+</style>
+</head>
+
+<body>
+
+<div class="form-box">
+<h2>Edit Customer / வாடிக்கையாளரைத் திருத்து</h2>
+
+<form method="POST">
+<input name="name" placeholder="Customer Name / வாடிக்கையாளர் பெயர்" value="{{row[1] if row[1] is not none else ''}}" required>
+<input name="phone" placeholder="Phone Number / தொலைபேசி எண்" value="{{row[12] if row[12] is not none else ''}}">
+<input name="address" placeholder="Address / முகவரி" value="{{row[13] if row[13] is not none else ''}}">
+<input name="item" placeholder="Item / பொருள்" value="{{row[2] if row[2] is not none else ''}}">
+<input name="gold" placeholder="Gold Weight (g) / தங்கத்தின் எடை (கி)" value="{{row[9] if row[9] is not none else ''}}">
+<input name="amount" placeholder="Amount / தொகை" id="amount" value="{{row[3] if row[3] is not none else ''}}" oninput="calc()" required>
+<input name="rate" placeholder="Interest % / வட்டி %" id="rate" value="{{row[4] if row[4] is not none else ''}}" oninput="calc()" required>
+<input name="months" placeholder="Months / மாதங்கள்" id="months" value="{{row[5] if row[5] is not none else ''}}" oninput="calc()" required>
+<input name="manual_extra" placeholder="Extra Amount / கூடுதல் தொகை" id="manual_extra" value="{{row[11] if row[11] is not none else ''}}" oninput="calc()">
+<input name="interest_amount" placeholder="Interest Amount / வட்டி தொகை" id="interest_amount" value="{{row[6] if row[6] is not none else ''}}">
+<input name="total_amount" placeholder="Total Amount / மொத்த தொகை" id="total_amount" value="{{row[7] if row[7] is not none else ''}}">
+<label style="font-size:0.9em;color:#666;">Due Date / கெடு தேதி</label>
+<input type="date" name="due_date" id="due_date" value="{{row[8] if row[8] is not none else ''}}">
+<select name="status" style="width:100%; padding:8px; margin:8px 0; border: 1px solid #ccc; border-radius: 4px;">
+    <option value="Active" {% if row[10] == 'Active' %}selected{% endif %}>Active / செயலில்</option>
+    <option value="Returned" {% if row[10] == 'Returned' %}selected{% endif %}>Returned / திரும்பப்பட்டது</option>
+</select>
+
+<button>Update Loan / கடனைப் புதுப்பி</button>
+</form>
+</div>
+
+<script>
+function calc() {
+    let amt = parseFloat(document.getElementById('amount').value) || 0;
+    let rt = parseFloat(document.getElementById('rate').value) || 0;
+    let mo = parseFloat(document.getElementById('months').value) || 0;
+    let extra = parseFloat(document.getElementById('manual_extra').value) || 0;
+    
+    let interest = (amt * rt * mo) / 100;
+    let total = amt + interest + extra;
+    
+    if (amt > 0 && rt > 0 && mo > 0) {
+        document.getElementById('interest_amount').value = interest.toFixed(2);
+        document.getElementById('total_amount').value = total.toFixed(2);
+    }
+}
+</script>
+
+</body>
