@@ -16,9 +16,15 @@ app.secret_key = "secret123"
 from requests.auth import HTTPBasicAuth
 
 # Twilio Configuration (Replace with your actual credentials)
-TWILIO_ACCOUNT_SID = 'your_account_sid'
-TWILIO_AUTH_TOKEN = 'your_auth_token'
-TWILIO_PHONE_NUMBER = 'your_twilio_phone_number'
+try:
+    import twilio_config
+    TWILIO_ACCOUNT_SID = twilio_config.TWILIO_ACCOUNT_SID
+    TWILIO_AUTH_TOKEN = twilio_config.TWILIO_AUTH_TOKEN
+    TWILIO_PHONE_NUMBER = twilio_config.TWILIO_PHONE_NUMBER
+except ImportError:
+    TWILIO_ACCOUNT_SID = 'your_account_sid'
+    TWILIO_AUTH_TOKEN = 'your_auth_token'
+    TWILIO_PHONE_NUMBER = 'your_twilio_phone_number'
 
 def send_sms(to_phone, message):
     if to_phone:
