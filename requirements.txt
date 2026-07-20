@@ -34,12 +34,8 @@ Jinja2==3.1.6
 joblib==1.5.3
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
-Kivy==2.3.1
-kivy-deps.angle==0.4.0
-kivy-deps.glew==0.3.1
-Kivy-Garden==0.1.5
-kivy_deps.sdl2==0.8.0
 kiwisolver==1.4.9
+Flask==3.1.3
 lazy-loader==0.5
 markdown-it-py==4.2.0
 MarkupSafe==3.0.3
@@ -69,11 +65,11 @@ PyJWT==2.12.1
 pyngrok==8.0.0
 pyparsing==3.3.2
 PyPDF2==3.0.1
-pypiwin32==223
+
 python-bidi==0.6.11
 python-dateutil==2.9.0.post0
 pytz==2026.2
-pywin32==311
+
 PyYAML==6.0.3
 redis==7.4.0
 referencing==0.37.0
