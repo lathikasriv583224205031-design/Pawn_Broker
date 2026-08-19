@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, send_file
+from flask import Flask, render_template, request, redirect, session, send_file, flash
 import sqlite3
 from datetime import datetime, timedelta
 import matplotlib
@@ -43,17 +43,21 @@ def send_sms(to_phone, message):
             response = requests.post(url, data=data, auth=auth)
             
             if response.status_code in [200, 201]:
-                return True
+                return True, "SMS sent successfully"
             else:
+                error_body = response.json()
+                error_msg = error_body.get('message', response.text)
                 with open("sms_log.txt", "a") as f:
                     f.write(f"Twilio Error: {response.text}\n")
                 print("Twilio Error:", response.text)
+                return False, error_msg
                 
         except Exception as e:
             with open("sms_log.txt", "a") as f:
                 f.write(f"SMS Error: {e}\n")
             print("SMS Error:", e)
-    return False
+            return False, str(e)
+    return False, "No phone number provided"
 
 def calculate(amount, rate, months, manual_extra=0):
     extra = (amount * rate * months) / 100
@@ -140,30 +144,29 @@ def dashboard():
     """)
     month_summary = cursor.fetchall()
 
-    # Chart
-    if not os.path.exists("static"):
-        os.makedirs("static")
+    # Chart - render to memory instead of disk (Vercel filesystem is read-only)
+    import base64
 
     months_labels = [row[0] if row[0] else 'Unknown' for row in month_summary]
     monthly_amounts = [row[3] if row[3] else 0 for row in month_summary]
 
+    plt.figure()
     if months_labels:
-        plt.figure()
         plt.bar(months_labels, monthly_amounts, color='#3498db')
         plt.xlabel('Month')
         plt.ylabel('Total Amount')
         plt.title('Month-wise Loan Summary')
         plt.xticks(rotation=45)
         plt.tight_layout()
-        plt.savefig("static/chart.png")
-        plt.close()
-    else:
-        plt.figure()
-        plt.savefig("static/chart.png")
-        plt.close()
+
+    buf = BytesIO()
+    plt.savefig(buf, format="png")
+    plt.close()
+    buf.seek(0)
+    chart_data = base64.b64encode(buf.read()).decode("utf-8")
 
     conn.close()
-    return render_template("dashboard.html", data=processed_data, month_summary=month_summary, month_filter=month_filter)
+    return render_template("dashboard.html", data=processed_data, month_summary=month_summary, month_filter=month_filter, chart_data=chart_data)
 
 @app.route("/add", methods=["GET","POST"])
 def add():
@@ -378,10 +381,14 @@ def send_reminder_sms(id):
         if not phone.startswith("+"):
             phone = "+91" + phone  # Defaulting to India
             
-        if send_sms(phone, msg):
+        success, err_msg = send_sms(phone, msg)
+        if success:
             today = datetime.now().strftime("%Y-%m-%d")
             cursor.execute("UPDATE loans SET last_msg_date=? WHERE id=?", (today, id))
             conn.commit()
+            flash("SMS reminder sent successfully!", "success")
+        else:
+            flash(f"Failed to send SMS: {err_msg}", "error")
 
     conn.close()
     return redirect("/dashboard")
@@ -398,6 +405,7 @@ def mass_warn():
     active_loans = cursor.fetchall()
     
     sent_count = 0
+    last_err_msg = ""
     for row in active_loans:
         loan_id, name, item, total, due, phone = row
         if lang == 'ta':
@@ -408,12 +416,22 @@ def mass_warn():
         if not phone.startswith("+"):
             phone = "+91" + phone
             
-        if send_sms(phone, msg):
+        success, err_msg = send_sms(phone, msg)
+        if success:
             cursor.execute("UPDATE loans SET last_msg_date=? WHERE id=?", (today, loan_id))
             sent_count += 1
+        else:
+            last_err_msg = err_msg
             
     conn.commit()
     conn.close()
+    
+    if sent_count > 0:
+        flash(f"Successfully sent mass SMS to {sent_count} customers.", "success")
+    if last_err_msg:
+        flash(f"Some SMS failed (e.g. {last_err_msg})", "error")
+    elif sent_count == 0 and not last_err_msg:
+        flash("No active customers to send SMS (or all already contacted today).", "info")
     
     return redirect("/dashboard")
 
