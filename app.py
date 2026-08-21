@@ -13,6 +13,54 @@ from reportlab.lib.pagesizes import letter
 app = Flask(__name__)
 app.secret_key = "secret123"
 
+# --- Read-only filesystem fix (Vercel) ---
+# Vercel's deployed files are read-only; only /tmp is writable, and /tmp
+# resets on every cold start. This keeps the app from crashing, but the
+# database will NOT persist long-term - move to a hosted DB (e.g. Postgres)
+# for real production use.
+import shutil
+
+DB_PATH = "/tmp/pawn.db"
+SMS_LOG_PATH = "/tmp/sms_log.txt"
+
+if not os.path.exists(DB_PATH):
+    bundled_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pawn.db")
+    if os.path.exists(bundled_db):
+        shutil.copyfile(bundled_db, DB_PATH)
+    else:
+        # No bundled db.py-created file shipped - create empty schema
+        _conn = sqlite3.connect(DB_PATH)
+        _cursor = _conn.cursor()
+        _cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            password TEXT
+        )
+        """)
+        _cursor.execute("""
+        CREATE TABLE IF NOT EXISTS loans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_name TEXT,
+            item TEXT,
+            gold_weight REAL,
+            amount REAL,
+            interest_rate REAL,
+            months INTEGER,
+            extra_amount REAL,
+            total_amount REAL,
+            due_date TEXT,
+            status TEXT DEFAULT 'Active',
+            manual_extra REAL DEFAULT 0,
+            phone_number TEXT DEFAULT '',
+            address TEXT DEFAULT '',
+            last_msg_date TEXT DEFAULT ''
+        )
+        """)
+        _cursor.execute("INSERT INTO users (username, password) VALUES ('velu','86088')")
+        _conn.commit()
+        _conn.close()
+
 from requests.auth import HTTPBasicAuth
 
 # Twilio Configuration (Replace with your actual credentials)
@@ -47,13 +95,13 @@ def send_sms(to_phone, message):
             else:
                 error_body = response.json()
                 error_msg = error_body.get('message', response.text)
-                with open("sms_log.txt", "a") as f:
+                with open(SMS_LOG_PATH, "a") as f:
                     f.write(f"Twilio Error: {response.text}\n")
                 print("Twilio Error:", response.text)
                 return False, error_msg
                 
         except Exception as e:
-            with open("sms_log.txt", "a") as f:
+            with open(SMS_LOG_PATH, "a") as f:
                 f.write(f"SMS Error: {e}\n")
             print("SMS Error:", e)
             return False, str(e)
@@ -87,7 +135,7 @@ def login():
         user = request.form["username"]
         pwd = request.form["password"]
 
-        conn = sqlite3.connect("pawn.db")
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM users WHERE username=? AND password=?", (user,pwd))
         data = cursor.fetchone()
@@ -106,7 +154,7 @@ def dashboard():
 
     month_filter = request.args.get("month_filter")
 
-    conn = sqlite3.connect("pawn.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     if month_filter:
@@ -192,7 +240,7 @@ def add():
         if request.form.get("due_date"):
             due = request.form.get("due_date")
 
-        conn = sqlite3.connect("pawn.db")
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("""
         INSERT INTO loans (customer_name,item,gold_weight,amount,interest_rate,months,extra_amount,total_amount,due_date,status,manual_extra,phone_number,address)
@@ -209,7 +257,7 @@ def add():
 def search():
     name = request.form["search"]
 
-    conn = sqlite3.connect("pawn.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM loans WHERE customer_name LIKE ? OR status LIKE ?", ('%'+name+'%', '%'+name+'%'))
     data = cursor.fetchall()
@@ -233,7 +281,7 @@ def search():
 
 @app.route("/delete/<int:id>")
 def delete(id):
-    conn = sqlite3.connect("pawn.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM loans WHERE id=?", (id,))
     conn.commit()
@@ -242,7 +290,7 @@ def delete(id):
 
 @app.route("/edit/<int:id>", methods=["GET","POST"])
 def edit(id):
-    conn = sqlite3.connect("pawn.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     if request.method == "POST":
@@ -293,7 +341,7 @@ def customer_pdf(id):
     if "user" not in session:
         return redirect("/")
 
-    conn = sqlite3.connect("pawn.db")
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM loans WHERE id=?", (id,))
@@ -365,7 +413,7 @@ def logout():
 @app.route("/send_sms/<int:id>")
 def send_reminder_sms(id):
     lang = request.args.get('lang', 'en')
-    conn = sqlite3.connect("pawn.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT customer_name, item, total_amount, due_date, phone_number FROM loans WHERE id=?", (id,))
     data = cursor.fetchone()
@@ -396,7 +444,7 @@ def send_reminder_sms(id):
 @app.route("/mass_warn")
 def mass_warn():
     lang = request.args.get('lang', 'en')
-    conn = sqlite3.connect("pawn.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     # Select all active loans with a phone number that haven't been messaged today
